@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+httpx
+livekit
+livekit-agents
+openai
+pydantic-settings
+python-dotenv
+websockets
