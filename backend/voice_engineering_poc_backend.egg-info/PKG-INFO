@@ -1,0 +1,30 @@
+Metadata-Version: 2.4
+Name: voice-engineering-poc-backend
+Version: 0.1.0
+Summary: Browser voice AI demo backend built with FastAPI and LiveKit.
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: httpx>=0.28.0
+Requires-Dist: livekit>=1.0.8
+Requires-Dist: livekit-agents>=1.3.1
+Requires-Dist: openai>=1.66.0
+Requires-Dist: pydantic-settings>=2.8.0
+Requires-Dist: python-dotenv>=1.0.1
+Requires-Dist: uvicorn[standard]>=0.34.0
+Requires-Dist: websockets>=15.0.0
+
+# Backend
+
+Run the FastAPI app with:
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Run the LiveKit worker with:
+
+```bash
+python -m app.runtime.worker
+```
+

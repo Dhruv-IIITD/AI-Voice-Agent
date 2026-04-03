@@ -1,0 +1,65 @@
+# ----------------------
+# Python (FastAPI backend)
+# ----------------------
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+
+# ----------------------
+# Environment files
+# ----------------------
+.env
+.env.local
+.env.*.local
+
+# ----------------------
+# Node.js / Next.js frontend
+# ----------------------
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# Turbopack / cache (important for your error)
+.next/cache/
+frontend/.next/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ----------------------
+# IDE / Editor files
+# ----------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ----------------------
+# OS files
+# ----------------------
+.DS_Store
+Thumbs.db
+
+# ----------------------
+# Misc
+# ----------------------
+coverage/
+*.log
+tmp/
+temp/
+
+
+*.wav
+*.mp3
+recordings/
+uploads/
