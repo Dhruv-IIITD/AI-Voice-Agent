@@ -27,6 +27,12 @@ os.environ.setdefault("LIVEKIT_URL", settings.livekit_ws_url)
 os.environ.setdefault("LIVEKIT_API_KEY", settings.livekit_api_key)
 os.environ.setdefault("LIVEKIT_API_SECRET", settings.livekit_api_secret)
 os.environ.setdefault("LIVEKIT_LOG_LEVEL", settings.log_level.upper())
+
+print("LIVEKIT_URL:", settings.livekit_ws_url)
+print("LIVEKIT_API_KEY:", settings.livekit_api_key)
+print("LIVEKIT_API_SECRET:", settings.livekit_api_secret)
+print("LIVEKIT_LOG_LEVEL:", settings.log_level.upper())
+
 server = AgentServer(
     ws_url=settings.livekit_ws_url,
     api_key=settings.livekit_api_key,
