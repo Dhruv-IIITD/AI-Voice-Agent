@@ -25,4 +25,5 @@ package-dir = {"" = "."}
 
 [tool.setuptools.packages.find]
 include = ["app*"]
+namespaces = true
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 
 from livekit import rtc
 from livekit.agents import AgentServer, AutoSubscribe, JobContext, cli
@@ -28,11 +29,6 @@ os.environ.setdefault("LIVEKIT_API_KEY", settings.livekit_api_key)
 os.environ.setdefault("LIVEKIT_API_SECRET", settings.livekit_api_secret)
 os.environ.setdefault("LIVEKIT_LOG_LEVEL", settings.log_level.upper())
 
-print("LIVEKIT_URL:", settings.livekit_ws_url)
-print("LIVEKIT_API_KEY:", settings.livekit_api_key)
-print("LIVEKIT_API_SECRET:", settings.livekit_api_secret)
-print("LIVEKIT_LOG_LEVEL:", settings.log_level.upper())
-
 server = AgentServer(
     ws_url=settings.livekit_ws_url,
     api_key=settings.livekit_api_key,
@@ -41,7 +37,8 @@ server = AgentServer(
 )
 
 class BrowserVoiceWorker:
-    def __init__(self, *, ctx: JobContext, metadata: SessionMetadata) -> None:
+    def __init__(self, *, ctx:JobContext, metadata:SessionMetadata) -> None:
+        # standard stuff to attach our context
         self._ctx = ctx
         self._room = ctx.room
         self._metadata = metadata
@@ -174,9 +171,12 @@ class BrowserVoiceWorker:
         )
         try:
             async for event in audio_stream:
+                audio_bytes = event.frame.data.cast("B").tobytes()
                 if not self._input_gate.is_set():
+                    # Feed silence to STT to advance its clock so it flushes the old speech
+                    await self._stt.send_audio(b"\x00" * len(audio_bytes))
                     continue
-                await self._stt.send_audio(event.frame.data.cast("B").tobytes())
+                await self._stt.send_audio(audio_bytes)
         finally:
             logger.info("Audio stream closed, shutting down STT")
             await audio_stream.aclose()
@@ -184,11 +184,19 @@ class BrowserVoiceWorker:
 
     async def _consume_transcripts(self) -> None:
         last_partial = ""
+        stt_start_time = None
         async for event in self._stt.events():
             if not self._input_gate.is_set():
                 last_partial = ""
+                stt_start_time = None
                 continue
+            
+            if stt_start_time is None:
+                stt_start_time = time.perf_counter()
+
             if event.is_final:
+                stt_latency_ms = (time.perf_counter() - stt_start_time) * 1000 if stt_start_time else 0
+                stt_start_time = None
                 final_text = event.text.strip()
                 if not final_text:
                     continue
@@ -200,9 +208,14 @@ class BrowserVoiceWorker:
                         "text": final_text,
                         "final": True,
                         "provider": event.provider,
+                        "stt_latency_ms": round(stt_latency_ms),
                     },
                 )
-                await self._handle_user_turn(final_text)
+                try:
+                    await self._handle_user_turn(final_text)
+                except Exception:
+                    logger.exception("Unhandled error processing user turn")
+                    await self._set_assistant_state("listening")
                 last_partial = ""
                 continue
 
@@ -225,6 +238,7 @@ class BrowserVoiceWorker:
             logger.info("Handling user turn text=%s", user_text)
             await self._set_assistant_state("thinking")
 
+            start_llm = time.perf_counter()
             final_text = ""
             async for event in self._conversation.stream_reply(user_text):
                 if event.kind == "tool_call":
@@ -254,12 +268,17 @@ class BrowserVoiceWorker:
                     final_text = event.text
                     logger.info("Assistant complete text_length=%s", len(final_text))
 
+            llm_latency_ms = (time.perf_counter() - start_llm) * 1000
+
             if not final_text:
                 final_text = "I did not generate a response."
 
             await self._set_assistant_state("speaking")
             logger.info("Starting TTS synthesis tts_provider=%s", self._metadata.tts_provider)
+            start_tts = time.perf_counter()
             audio = await self._tts.synthesize(final_text)
+            tts_latency_ms = (time.perf_counter() - start_tts) * 1000
+            
             logger.info("TTS synthesis finished audio_bytes=%s", len(audio.audio))
             await self._player.play(audio.audio)
             logger.info("Assistant audio playback finished")
@@ -268,6 +287,8 @@ class BrowserVoiceWorker:
                 {
                     "type": "assistant_complete",
                     "text": final_text,
+                    "llm_latency_ms": round(llm_latency_ms),
+                    "tts_latency_ms": round(tts_latency_ms),
                 },
             )
             await self._set_assistant_state("listening")

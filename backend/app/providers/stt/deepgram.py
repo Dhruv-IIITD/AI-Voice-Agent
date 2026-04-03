@@ -33,7 +33,7 @@ class DeepgramStreamingSTT(BaseStreamingSTT):
                 "sample_rate": self.sample_rate,
                 "channels": self.num_channels,
                 "interim_results": "true",
-                "endpointing": 300,
+                "endpointing": 1000,
                 "smart_format": "true",
             }
         )

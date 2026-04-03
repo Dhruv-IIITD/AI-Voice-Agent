@@ -169,7 +169,8 @@ export function useVoiceSession() {
             ...entry,
             text: event.text,
             isFinal: true,
-            provider: event.provider
+            provider: event.provider,
+            stt_latency_ms: event.stt_latency_ms
           }));
           userDraftIdRef.current = null;
           return;
@@ -180,7 +181,8 @@ export function useVoiceSession() {
           role: "user",
           text: event.text,
           isFinal: true,
-          provider: event.provider
+          provider: event.provider,
+          stt_latency_ms: event.stt_latency_ms
         });
         return;
       }
@@ -230,7 +232,9 @@ export function useVoiceSession() {
         updateTranscript(draftId, (entry) => ({
           ...entry,
           text: event.text,
-          isFinal: true
+          isFinal: true,
+          llm_latency_ms: event.llm_latency_ms,
+          tts_latency_ms: event.tts_latency_ms
         }));
         assistantDraftIdRef.current = null;
         return;
@@ -240,7 +244,9 @@ export function useVoiceSession() {
         id: makeId("assistant"),
         role: "assistant",
         text: event.text,
-        isFinal: true
+        isFinal: true,
+        llm_latency_ms: event.llm_latency_ms,
+        tts_latency_ms: event.tts_latency_ms
       });
       return;
     }

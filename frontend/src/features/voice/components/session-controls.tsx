@@ -56,7 +56,7 @@ export function SessionControls({
         <span className={`${styles.sessionStatePill} ${stateClassName}`}>{ASSISTANT_LABELS[assistantState]}</span>
       </div>
 
-      <p className={styles.sessionCardMeta}>{helperText}</p>
+      {/* <p className={styles.sessionCardMeta}>{helperText}</p> */}
 
       {!isConnected ? (
         <button

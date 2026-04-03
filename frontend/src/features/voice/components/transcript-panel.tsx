@@ -1,6 +1,7 @@
 import type { TranscriptEntry } from "../types";
 
 import styles from "./voice-workspace.module.css";
+import { useEffect, useRef } from "react";
 
 interface TranscriptPanelProps {
   entries: TranscriptEntry[];
@@ -32,6 +33,11 @@ function roleLabel(role: TranscriptEntry["role"], agentName: string) {
 }
 
 export function TranscriptPanel({ entries, agentName }: TranscriptPanelProps) {
+    const bottomRef = useRef<HTMLDivElement | null>(null);
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [entries]);
+        
   return (
     <section className={styles.transcriptPanel}>
       <div className={styles.transcriptPanelHeader}>
@@ -58,6 +64,9 @@ export function TranscriptPanel({ entries, agentName }: TranscriptPanelProps) {
               <span className={styles.transcriptBubbleTitle}>{roleLabel(entry.role, agentName)}</span>
               <div className={styles.transcriptBubbleMeta}>
                 {entry.provider ? <span>{entry.provider}</span> : null}
+                {entry.stt_latency_ms ? <span>STT: {entry.stt_latency_ms}ms</span> : null}
+                {entry.llm_latency_ms ? <span>LLM: {entry.llm_latency_ms}ms</span> : null}
+                {entry.tts_latency_ms ? <span>TTS: {entry.tts_latency_ms}ms</span> : null}
                 {!entry.isFinal ? <span className={styles.transcriptDraftPill}>Streaming</span> : null}
               </div>
             </div>
@@ -65,6 +74,7 @@ export function TranscriptPanel({ entries, agentName }: TranscriptPanelProps) {
             <p className={styles.transcriptBubbleBody}>{entry.text}</p>
           </article>
         ))}
+        <div ref={bottomRef} />
       </div>
     </section>
   );

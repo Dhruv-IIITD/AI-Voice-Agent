@@ -174,7 +174,9 @@ export function VoiceWorkspace() {
 
   return (
     <main className="pageShell">
+    
       <section className={styles.dashboardShell}>
+    
         <aside className={`${styles.utilitySidebar} ${utilityCollapsed ? styles.utilitySidebarCollapsed : ""}`}>
           <div className={styles.utilityTopRow}>
             <div className={styles.utilityBrand}>
@@ -182,19 +184,18 @@ export function VoiceWorkspace() {
               {!utilityCollapsed ? (
                 <div className={styles.utilityBrandCopy}>
                   <strong>VoiceAI</strong>
-                  <span>Workspace</span>
                 </div>
               ) : null}
             </div>
 
-            <button
+            {/* <button
               aria-label={utilityCollapsed ? "Open sidebar" : "Close sidebar"}
               className={styles.sidebarToggle}
               onClick={() => setUtilityCollapsed((current) => !current)}
               type="button"
             >
               {utilityCollapsed ? ">" : "<"}
-            </button>
+            </button> */}
           </div>
 
           {!utilityCollapsed ? (
@@ -203,7 +204,7 @@ export function VoiceWorkspace() {
                 <span className={styles.utilityConnectionDot} />
                 <div>
                   <strong>{utilityStatus}</strong>
-                  <span>{providerSelectionLocked ? "Reconnect to edit providers" : "Providers can be changed now"}</span>
+                  <span>{providerSelectionLocked ? "Reconnect to edit providers" : "Connect Backend to start"}</span>
                 </div>
               </div>
 
@@ -341,12 +342,17 @@ export function VoiceWorkspace() {
 
         <section className={styles.mainPanel}>
           <header className={styles.mainHeader}>
-            <div>
-              <h1 className={styles.mainTitle}>Voice Chat Interface</h1>
-              <p className={styles.mainSubtitle}>Browser-based real-time voice session via LiveKit</p>
+            <div className={styles.headerCenter}>
+                <h1 className={styles.mainTitle}>AI Voice Agent</h1>
+                <p className={styles.mainSubtitle}>
+                Browser-based real-time voice session via LiveKit
+                </p>
             </div>
-            <span className={styles.messageCounter}>{voiceSession.transcripts.length} messages</span>
-          </header>
+
+            <span className={styles.messageCounter}>
+                {voiceSession.transcripts.length} messages
+            </span>
+        </header>
 
           <section className={styles.activityPanel}>
             <div className={styles.activityPanelHeader}>

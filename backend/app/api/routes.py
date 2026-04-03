@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 @router.get("/health", response_model=HealthResponse)
 async def healthcheck() -> HealthResponse:
+    # simple health check so we know backend is alive
     logger.info("Healthcheck requested")
     return HealthResponse()
 
@@ -24,9 +25,10 @@ async def agents() -> list[dict]:
 
 @router.post("/sessions", response_model=SessionCreateResponse)
 async def create_session(
-    payload: SessionCreateRequest,
-    settings: Settings = Depends(get_settings),
+    payload:SessionCreateRequest,
+    settings:Settings = Depends(get_settings),
 ) -> SessionCreateResponse:
+    # let's try this
     logger.info(
         "Create session requested for agent=%s display_name=%s stt=%s tts=%s",
         payload.agent_id,

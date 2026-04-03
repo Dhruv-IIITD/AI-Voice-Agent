@@ -1,2 +1,0 @@
-"""Provider factories and adapters."""
-

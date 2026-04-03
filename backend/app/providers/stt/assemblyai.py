@@ -32,6 +32,7 @@ class AssemblyAIStreamingSTT(BaseStreamingSTT):
                 "sample_rate": self.sample_rate,
                 "speech_model": self._speech_model,
                 "format_turns": "true",
+                "end_utterance_silence_threshold": 1000,
             }
         )
         self._socket = await websockets.connect(
@@ -74,9 +75,9 @@ class AssemblyAIStreamingSTT(BaseStreamingSTT):
                 message_type = str(payload.get("type") or payload.get("message_type") or "").lower()
                 is_final = bool(
                     payload.get("end_of_turn")
+                    or payload.get("message_type") == "FinalTranscript"
                     or payload.get("is_final")
                     or payload.get("final")
-                    or message_type in {"turn", "finaltranscript", "final_transcript"}
                 )
                 await self.emit(
                     TranscriptEvent(
