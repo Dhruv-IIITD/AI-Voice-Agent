@@ -1,0 +1,56 @@
+Metadata-Version: 2.4
+Name: voice-engineering-poc-backend
+Version: 0.1.0
+Summary: Browser voice AI demo backend built with FastAPI and LiveKit.
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: httpx>=0.28.0
+Requires-Dist: livekit>=1.0.8
+Requires-Dist: livekit-agents>=1.3.1
+Requires-Dist: openai>=1.66.0
+Requires-Dist: pydantic-settings>=2.8.0
+Requires-Dist: python-dotenv>=1.0.1
+Requires-Dist: uvicorn[standard]>=0.34.0
+Requires-Dist: websockets>=15.0.0
+
+
+## Setup
+
+### 1. Backend
+
+Use a virtual environment. The LiveKit agent runtime installs newer `numpy` and `protobuf` versions, so isolating dependencies is strongly recommended.
+
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install --upgrade pip
+python -m pip install -e .
+copy .env.example .env
+```
+
+Fill in these required values in `backend/.env`:
+
+- `LIVEKIT_WS_URL`
+- `LIVEKIT_API_URL`
+- `LIVEKIT_API_KEY`
+- `LIVEKIT_API_SECRET`
+- `OPENROUTER_API_KEY`
+- `OPENROUTER_MODEL`
+- if you want to avoid paid OpenRouter models entirely, keep `OPENROUTER_REQUIRE_FREE=true` and use `OPENROUTER_MODEL=qwen/qwen3.6-plus:free` or another model ending in `:free`
+- the provider keys you plan to use, such as `DEEPGRAM_API_KEY` and `ELEVENLABS_API_KEY`
+
+Run the FastAPI app with:
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Run the worker in a second terminal:
+
+```bash
+cd backend
+.venv\Scripts\activate
+python -m app.worker dev
+```

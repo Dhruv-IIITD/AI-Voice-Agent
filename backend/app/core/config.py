@@ -25,11 +25,25 @@ class Settings(BaseSettings):
     livekit_api_secret: str = Field(..., alias="LIVEKIT_API_SECRET")
     livekit_agent_name: str = Field(default="browser-voice-agent", alias="LIVEKIT_AGENT_NAME")
 
+    llm_provider: Literal["openrouter", "openai", "gemini", "groq"] = Field(
+        default="openrouter",
+        alias="LLM_PROVIDER",
+    )
+
     openrouter_api_key: str | None = Field(default=None, alias="OPENROUTER_API_KEY")
     openrouter_model: str = Field(default="qwen/qwen3.6-plus:free", alias="OPENROUTER_MODEL")
     openrouter_site_url: str | None = Field(default=None, alias="OPENROUTER_SITE_URL")
     openrouter_app_name: str | None = Field(default=None, alias="OPENROUTER_APP_NAME")
     openrouter_require_free: bool = Field(default=True, alias="OPENROUTER_REQUIRE_FREE")
+
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")
+
+    gemini_api_key: str | None = Field(default=None, alias="GEMINI_API_KEY")
+    gemini_model: str = Field(default="gemini-1.5-flash", alias="GEMINI_MODEL")
+
+    groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
+    groq_model: str = Field(default="llama-3.1-8b-instant", alias="GROQ_MODEL")
     llm_temperature: float = 0.2
 
     default_stt_provider: Literal["deepgram", "assemblyai"] = Field(
