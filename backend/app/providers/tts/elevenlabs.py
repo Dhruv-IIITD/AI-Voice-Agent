@@ -20,13 +20,15 @@ class ElevenLabsTTSClient(BaseTTSClient):
         self.sample_rate = sample_rate
 
     async def synthesize(self, text: str) -> SynthesizedAudio:
+        print(f"[DEBUG] Synthesizing text: '{text[:50]}...' using voice: {self._voice_id}")
+        print(f"[DEBUG] API Key: {self._api_key[:5]}...{self._api_key[-4:]}")
         async with httpx.AsyncClient(timeout=60.0) as client:
             async with client.stream(
                 "POST",
                 f"https://api.elevenlabs.io/v1/text-to-speech/{self._voice_id}/stream",
                 params={
                     "output_format": f"pcm_{self.sample_rate}",
-                    "optimize_streaming_latency": 3,
+                    "optimize_streaming_latency": 4,
                 },
                 headers={
                     "xi-api-key": self._api_key,
@@ -42,7 +44,12 @@ class ElevenLabsTTSClient(BaseTTSClient):
                     },
                 },
             ) as response:
-                response.raise_for_status()
+                if response.status_code != 200:
+                    error_body = await response.aread()
+                    print(f"[ERROR] ElevenLabs synthesis failed with status {response.status_code}")
+                    print(f"[ERROR] Response body: {error_body.decode()}")
+                    response.raise_for_status()
+
                 chunks = bytearray()
                 async for chunk in response.aiter_bytes():
                     chunks.extend(chunk)
