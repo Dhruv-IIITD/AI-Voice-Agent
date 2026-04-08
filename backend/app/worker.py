@@ -273,24 +273,25 @@ class BrowserVoiceWorker:
             if not final_text:
                 final_text = "I did not generate a response."
 
-            await self._set_assistant_state("speaking")
-            logger.info("Starting TTS synthesis tts_provider=%s", self._metadata.tts_provider)
-            start_tts = time.perf_counter()
-            audio = await self._tts.synthesize(final_text)
-            tts_latency_ms = (time.perf_counter() - start_tts) * 1000
-            
-            logger.info("TTS synthesis finished audio_bytes=%s", len(audio.audio))
-            await self._player.play(audio.audio)
-            logger.info("Assistant audio playback finished")
+            # Finalize transcript on screen before playback starts
             await publish_voice_event(
                 self._room,
                 {
                     "type": "assistant_complete",
                     "text": final_text,
                     "llm_latency_ms": round(llm_latency_ms),
-                    "tts_latency_ms": round(tts_latency_ms),
                 },
             )
+
+            await self._set_assistant_state("speaking")
+            logger.info("Starting TTS synthesis tts_provider=%s", self._metadata.tts_provider)
+            start_tts = time.perf_counter()
+            audio = await self._tts.synthesize(final_text)
+            tts_latency_ms = (time.perf_counter() - start_tts) * 1000
+            
+            logger.info("TTS synthesis finished audio_bytes=%s tts_latency=%sms", len(audio.audio), round(tts_latency_ms))
+            await self._player.play(audio.audio)
+            logger.info("Assistant audio playback finished")
             await self._set_assistant_state("listening")
 
     async def _set_assistant_state(self, state: str) -> None:
