@@ -1,4 +1,4 @@
-# Voice Engineering Take Home Assignment: AI Voice Agent
+# AI Voice Agent
 
 🌐 **Live Demo:** [https://ai-voice-agent-production-a0a7.up.railway.app/](https://ai-voice-agent-production-a0a7.up.railway.app/)
 
