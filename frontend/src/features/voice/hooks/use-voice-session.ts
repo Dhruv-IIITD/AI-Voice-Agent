@@ -13,19 +13,26 @@ import { MOCK_AGENTS, createMockSession } from "../lib/mock-data";
 import type {
   AssistantState,
   ConnectionState,
+  RetrievedChunk,
   SessionCreateRequest,
   SessionResponse,
+  ToolCallEntry,
   TranscriptEntry,
   VoiceWorkerEvent
 } from "../types";
 
 const VOICE_EVENT_TOPIC = "voice-event";
+const ENABLE_DEBUG_LOGS =
+  process.env.NEXT_PUBLIC_DEBUG_VOICE_LOGS === "true" || process.env.NODE_ENV !== "production";
 
 function makeId(prefix: string) {
   return `${prefix}-${crypto.randomUUID()}`;
 }
 
 function debugLog(message: string, details?: unknown) {
+  if (!ENABLE_DEBUG_LOGS) {
+    return;
+  }
   if (details !== undefined) {
     console.log(`[voice-session] ${message}`, details);
     return;
@@ -63,6 +70,9 @@ export function useVoiceSession() {
   const [isMuted, setIsMuted] = useState(false);
   const [activeSpeakers, setActiveSpeakers] = useState(0);
   const [transcripts, setTranscripts] = useState<TranscriptEntry[]>([]);
+  const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
+  const [retrievedChunks, setRetrievedChunks] = useState<RetrievedChunk[]>([]);
+  const [memorySummary, setMemorySummary] = useState("");
   const [session, setSession] = useState<SessionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -162,49 +172,50 @@ export function useVoiceSession() {
     }
 
     if (event.type === "user_transcript") {
-      if (event.final) {
-        if (userDraftIdRef.current) {
-          const draftId = userDraftIdRef.current;
-          updateTranscript(draftId, (entry) => ({
-            ...entry,
-            text: event.text,
-            isFinal: true,
-            provider: event.provider,
-            stt_latency_ms: event.stt_latency_ms
-          }));
-          userDraftIdRef.current = null;
-          return;
+          if (event.final) {
+                if (userDraftIdRef.current) {
+                
+                    const draftId = userDraftIdRef.current;
+                updateTranscript(draftId, (entry) => ({
+                    ...entry,
+                    text: event.text,
+                    isFinal: true,
+                    provider: event.provider,
+                    stt_latency_ms: event.stt_latency_ms
+                }));
+            userDraftIdRef.current = null;
+            return;
+                }
+
+                appendTranscript({
+                id: makeId("user"),
+                role: "user",
+                text: event.text,
+                isFinal: true,
+                provider: event.provider,
+                stt_latency_ms: event.stt_latency_ms
+                });
+                return;
         }
 
-        appendTranscript({
-          id: makeId("user"),
-          role: "user",
-          text: event.text,
-          isFinal: true,
-          provider: event.provider,
-          stt_latency_ms: event.stt_latency_ms
-        });
-        return;
-      }
+        if (!userDraftIdRef.current) {
+            userDraftIdRef.current = makeId("user-draft");
+            appendTranscript({
+            id: userDraftIdRef.current,
+            role: "user",
+            text: event.text,
+            isFinal: false,
+            provider: event.provider
+            });
+            return;
+        }
 
-      if (!userDraftIdRef.current) {
-        userDraftIdRef.current = makeId("user-draft");
-        appendTranscript({
-          id: userDraftIdRef.current,
-          role: "user",
-          text: event.text,
-          isFinal: false,
-          provider: event.provider
-        });
+        updateTranscript(userDraftIdRef.current, (entry) => ({
+            ...entry,
+            text: event.text,
+            provider: event.provider
+        }));
         return;
-      }
-
-      updateTranscript(userDraftIdRef.current, (entry) => ({
-        ...entry,
-        text: event.text,
-        provider: event.provider
-      }));
-      return;
     }
 
     if (event.type === "assistant_delta") {
@@ -227,6 +238,8 @@ export function useVoiceSession() {
     }
 
     if (event.type === "assistant_complete") {
+      setRetrievedChunks(event.retrieved_chunks ?? []);
+      setMemorySummary(event.memory_summary ?? "");
       if (assistantDraftIdRef.current) {
         const draftId = assistantDraftIdRef.current;
         updateTranscript(draftId, (entry) => ({
@@ -251,11 +264,35 @@ export function useVoiceSession() {
       return;
     }
 
+    if (event.type === "assistant_warning") {
+      setError(event.message);
+      appendTranscript({
+        id: makeId("assistant-warning"),
+        role: "assistant",
+        text: event.message,
+        isFinal: true
+      });
+      return;
+    }
+
     if (event.type === "tool_call") {
+      setToolCalls((current) =>
+        [
+          ...current,
+          {
+            name: event.toolName,
+            arguments: event.arguments,
+            resultSummary: event.resultSummary,
+            createdAt: new Date().toISOString()
+          }
+        ].slice(-20)
+      );
       appendTranscript({
         id: makeId("tool"),
         role: "tool",
-        text: `${event.toolName}(${JSON.stringify(event.arguments)})`,
+        text: event.resultSummary
+          ? `${event.toolName}: ${event.resultSummary}`
+          : `${event.toolName}(${JSON.stringify(event.arguments)})`,
         isFinal: true
       });
     }
@@ -273,6 +310,9 @@ export function useVoiceSession() {
       setActiveSpeakers(0);
       setSession(null);
       setTranscripts([]);
+      setToolCalls([]);
+      setRetrievedChunks([]);
+      setMemorySummary("");
       userMutedRef.current = false;
       assistantStateRef.current = "disconnected";
       return;
@@ -286,6 +326,9 @@ export function useVoiceSession() {
     setIsMuted(false);
     setActiveSpeakers(0);
     setSession(null);
+    setToolCalls([]);
+    setRetrievedChunks([]);
+    setMemorySummary("");
     userMutedRef.current = false;
     assistantStateRef.current = "disconnected";
   }, [clearMockTimers]);
@@ -395,6 +438,9 @@ export function useVoiceSession() {
     setAssistantState("idle");
     setError(null);
     setTranscripts([]);
+    setToolCalls([]);
+    setRetrievedChunks([]);
+    setMemorySummary("");
     userMutedRef.current = false;
     assistantStateRef.current = "idle";
     userDraftIdRef.current = null;
@@ -423,6 +469,7 @@ export function useVoiceSession() {
       });
       debugLog("livekit room object created");
 
+      // 2. attach incoming audio from the remote assistant
       room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, publication, participant) => {
         debugLog("track subscribed", {
           trackSid: track.sid,
@@ -432,6 +479,7 @@ export function useVoiceSession() {
         attachAudioTrack(track);
       });
 
+      // 3. detach when the remote assistant stops sending audio
       room.on(
         RoomEvent.TrackUnsubscribed,
         (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
@@ -444,15 +492,22 @@ export function useVoiceSession() {
         }
       );
 
+      // 4. listen for real-time events from the worker
       room.on(RoomEvent.DataReceived, (payloadBytes, _participant, _kind, topic) => {
         if (topic !== VOICE_EVENT_TOPIC) {
           return;
         }
         const raw = new TextDecoder().decode(payloadBytes);
-        debugLog("data packet received", { topic, raw });
-        handleVoiceEvent(JSON.parse(raw) as VoiceWorkerEvent);
+        try {
+          const parsedEvent = JSON.parse(raw) as VoiceWorkerEvent;
+          debugLog("data packet received", { topic, parsedEvent });
+          handleVoiceEvent(parsedEvent);
+        } catch {
+          debugLog("failed to parse worker data packet", { topic, raw });
+        }
       });
 
+      // 5. monitor active speakers
       room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
         debugLog("active speakers changed", {
           count: speakers.length,
@@ -461,10 +516,12 @@ export function useVoiceSession() {
         setActiveSpeakers(speakers.length);
       });
 
+    // 6. connection
       room.on(RoomEvent.Connected, () => {
         debugLog("room connected");
       });
 
+      // 7. disconnection
       room.on(RoomEvent.Disconnected, () => {
         debugLog("room disconnected event fired");
         userMutedRef.current = false;
@@ -533,7 +590,10 @@ export function useVoiceSession() {
     isConnected: connectionState === "connected",
     isMuted,
     session,
+    toolCalls,
     toggleMute,
-    transcripts
+    transcripts,
+    retrievedChunks,
+    memorySummary
   };
 }

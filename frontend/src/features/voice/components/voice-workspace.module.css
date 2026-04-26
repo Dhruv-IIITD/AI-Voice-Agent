@@ -359,6 +359,108 @@
   min-height: 0;
   overflow: auto;
   padding-right: 4px;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.documentsPanel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.documentsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.documentsCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(19, 33, 29, 0.06);
+  color: var(--ink-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.documentUploadLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink-strong);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.documentUploadLabel:hover {
+  border-color: rgba(45, 163, 108, 0.24);
+}
+
+.documentUploadInput {
+  display: none;
+}
+
+.documentList {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.documentItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: rgba(248, 251, 249, 0.92);
+}
+
+.documentMeta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.documentMeta strong {
+  font-size: 0.84rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.documentMeta span {
+  font-size: 0.74rem;
+  color: var(--ink-muted);
+}
+
+.documentDeleteButton {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(212, 91, 91, 0.18);
+  border-radius: 10px;
+  background: rgba(212, 91, 91, 0.12);
+  color: #9a3c3c;
+  font-size: 0.76rem;
 }
 
 .compactEmpty {
@@ -561,6 +663,74 @@
   display: grid;
   gap: 14px;
   padding: 16px;
+}
+
+.sessionInsights {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.sessionInsightsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sessionInsightsHeader strong {
+  font-size: 0.96rem;
+}
+
+.insightsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.insightCard {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: rgba(248, 251, 249, 0.92);
+  max-height: 180px;
+  overflow: auto;
+}
+
+.insightTitle {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(22, 80, 52, 0.58);
+}
+
+.insightEmpty,
+.insightLine {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--ink-strong);
+}
+
+.insightLine strong {
+  font-weight: 700;
+}
+
+.memorySummary {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: rgba(239, 247, 242, 0.85);
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .waveformShell {
@@ -802,6 +972,10 @@
 
   .metricGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .insightsGrid {
+    grid-template-columns: 1fr;
   }
 
   .agentCardTopRow {

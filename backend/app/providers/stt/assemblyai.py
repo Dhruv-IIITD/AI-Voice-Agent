@@ -46,10 +46,10 @@ class AssemblyAIStreamingSTT(BaseStreamingSTT):
         if self._socket is None:
             raise RuntimeError("AssemblyAI websocket is not connected.")
 
-        # accumulate
         self._buffer += pcm_chunk
 
-        # send only when large enough
+        # send only when equal to target size to optimize for latency, otherwise we may end up sending very small chunks
+        
         if len(self._buffer) >= self._target_size:
             await self._socket.send(self._buffer)
             self._buffer = b""
@@ -72,7 +72,6 @@ class AssemblyAIStreamingSTT(BaseStreamingSTT):
                 transcript = (payload.get("transcript") or payload.get("text") or "").strip()
                 if not transcript:
                     continue
-                message_type = str(payload.get("type") or payload.get("message_type") or "").lower()
                 is_final = bool(
                     payload.get("end_of_turn")
                     or payload.get("message_type") == "FinalTranscript"
@@ -90,4 +89,3 @@ class AssemblyAIStreamingSTT(BaseStreamingSTT):
             logger.exception("AssemblyAI receive loop failed")
         finally:
             await self.finish()
-

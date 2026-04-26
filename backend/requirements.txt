@@ -1,10 +1,17 @@
+chromadb
 fastapi
 uvicorn[standard]
 httpx
+langchain
+langchain-text-splitters
+langgraph
+langchain-openai
 livekit
 livekit-agents
 openai
+pypdf
 pydantic-settings
+python-multipart
 python-dotenv
 websockets
 tzdata

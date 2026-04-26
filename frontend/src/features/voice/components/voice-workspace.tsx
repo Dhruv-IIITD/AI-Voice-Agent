@@ -1,11 +1,12 @@
 "use client";
 
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
 
 import { useVoiceSession } from "../hooks/use-voice-session";
+import { deleteDocument, fetchDocuments, uploadDocument } from "../lib/api-client";
 import { STT_OPTIONS, TTS_OPTIONS } from "../lib/constants";
 import { MOCK_AGENTS } from "../lib/mock-data";
-import type { AgentSummary, AssistantState, SttProvider, TtsProvider } from "../types";
+import type { AgentSummary, AssistantState, DocumentSummary, SttProvider, TtsProvider } from "../types";
 import { AgentSelector } from "./agent-selector";
 import { SessionControls } from "./session-controls";
 import { TranscriptPanel } from "./transcript-panel";
@@ -57,6 +58,10 @@ export function VoiceWorkspace() {
   const [frontendOnlyMode, setFrontendOnlyMode] = useState(false);
   const [modeNotice, setModeNotice] = useState<string | null>(null);
   const [utilityCollapsed, setUtilityCollapsed] = useState(false);
+  const [documents, setDocuments] = useState<DocumentSummary[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(true);
+  const [documentsError, setDocumentsError] = useState<string | null>(null);
+  const [uploadingDocument, setUploadingDocument] = useState(false);
 
   const voiceSession = useVoiceSession();
   const { fetchAgentCatalog } = voiceSession;
@@ -99,6 +104,25 @@ export function VoiceWorkspace() {
     };
   }, [fetchAgentCatalog]);
 
+  const loadDocuments = useCallback(async () => {
+    setLoadingDocuments(true);
+    try {
+      const uploadedDocuments = await fetchDocuments();
+      setDocuments(uploadedDocuments);
+      setDocumentsError(null);
+    } catch (caughtError) {
+      setDocumentsError(
+        caughtError instanceof Error ? caughtError.message : "Failed to load uploaded documents."
+      );
+    } finally {
+      setLoadingDocuments(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadDocuments();
+  }, [loadDocuments]);
+
   const selectedAgent = agents.find((agent) => agent.id === selectedAgentId);
   const availableSttOptions = useMemo(
     () =>
@@ -127,20 +151,54 @@ export function VoiceWorkspace() {
     }
   }, [availableTtsOptions, ttsProvider]);
 
-  async function handleConnect() {
-    if (!selectedAgentId) {
+    // handles our connection to the backend
+    async function handleConnect() {
+        if (!selectedAgentId) {
+            return;
+        }
+
+        await voiceSession.connect(
+        {
+            agent_id: selectedAgentId,
+            display_name: "Browser User",
+            stt_provider: sttProvider,
+            tts_provider: ttsProvider
+        },
+        { mockMode: frontendOnlyMode }
+        );
+    }
+
+  async function handleDocumentUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) {
       return;
     }
 
-    await voiceSession.connect(
-      {
-        agent_id: selectedAgentId,
-        display_name: "Browser User",
-        stt_provider: sttProvider,
-        tts_provider: ttsProvider
-      },
-      { mockMode: frontendOnlyMode }
-    );
+    setUploadingDocument(true);
+    try {
+      const uploadedDocument = await uploadDocument(file);
+      setDocuments((current) => [uploadedDocument, ...current.filter((entry) => entry.document_id !== uploadedDocument.document_id)]);
+      setDocumentsError(null);
+    } catch (caughtError) {
+      setDocumentsError(
+        caughtError instanceof Error ? caughtError.message : "Failed to upload document."
+      );
+    } finally {
+      setUploadingDocument(false);
+    }
+  }
+
+  async function handleDeleteDocument(documentId: string) {
+    try {
+      await deleteDocument(documentId);
+      setDocuments((current) => current.filter((entry) => entry.document_id !== documentId));
+      setDocumentsError(null);
+    } catch (caughtError) {
+      setDocumentsError(
+        caughtError instanceof Error ? caughtError.message : "Failed to delete document."
+      );
+    }
   }
 
   const providerSelectionLocked =
@@ -171,6 +229,9 @@ export function VoiceWorkspace() {
       ? "Frontend preview"
       : "Ready to connect";
   const activityStatus = voiceSession.isConnected ? ASSISTANT_LABELS[voiceSession.assistantState] : "Inactive";
+  const recentTranscript = [...voiceSession.transcripts].slice(-4).reverse();
+  const recentToolCalls = [...voiceSession.toolCalls].slice(-4).reverse();
+  const recentChunks = voiceSession.retrievedChunks.slice(0, 3);
 
   return (
     <main className="pageShell">
@@ -322,6 +383,52 @@ export function VoiceWorkspace() {
                 selectedAgentId={selectedAgentId}
               />
             ) : null}
+
+            <section className={styles.documentsPanel}>
+              <div className={styles.documentsHeader}>
+                <span className={styles.sectionEyebrow}>RAG Documents</span>
+                <span className={styles.documentsCount}>{documents.length}</span>
+              </div>
+
+              <label className={styles.documentUploadLabel}>
+                <input
+                  accept=".txt,.pdf"
+                  className={styles.documentUploadInput}
+                  disabled={uploadingDocument}
+                  onChange={handleDocumentUpload}
+                  type="file"
+                />
+                {uploadingDocument ? "Uploading..." : "Upload .txt / .pdf"}
+              </label>
+
+              {loadingDocuments ? <div className={styles.compactEmpty}>Loading documents...</div> : null}
+              {!loadingDocuments && documents.length === 0 ? (
+                <div className={styles.compactEmpty}>No uploaded documents yet.</div>
+              ) : null}
+
+              {documentsError ? <div className={styles.errorState}>{documentsError}</div> : null}
+
+              {!loadingDocuments && documents.length > 0 ? (
+                <div className={styles.documentList}>
+                  {documents.map((document) => (
+                    <article className={styles.documentItem} key={document.document_id}>
+                      <div className={styles.documentMeta}>
+                        <strong>{document.filename}</strong>
+                        <span>{document.chunk_count} chunks</span>
+                        <span>{new Date(document.uploaded_at).toLocaleString()}</span>
+                      </div>
+                      <button
+                        className={styles.documentDeleteButton}
+                        onClick={() => void handleDeleteDocument(document.document_id)}
+                        type="button"
+                      >
+                        Delete
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+            </section>
           </div>
 
           <SessionControls
@@ -397,6 +504,60 @@ export function VoiceWorkspace() {
                 <strong>{currentRoomName}</strong>
               </div>
             </div>
+          </section>
+
+          <section className={styles.sessionInsights}>
+            <div className={styles.sessionInsightsHeader}>
+              <span className={styles.sectionEyebrow}>Session Insights</span>
+              <strong>Memory + Tools + RAG</strong>
+            </div>
+
+            <div className={styles.insightsGrid}>
+              <article className={styles.insightCard}>
+                <span className={styles.insightTitle}>Recent Transcript</span>
+                {recentTranscript.length === 0 ? (
+                  <p className={styles.insightEmpty}>No transcript yet.</p>
+                ) : (
+                  recentTranscript.map((entry) => (
+                    <p className={styles.insightLine} key={entry.id}>
+                      <strong>{entry.role}:</strong> {entry.text}
+                    </p>
+                  ))
+                )}
+              </article>
+
+              <article className={styles.insightCard}>
+                <span className={styles.insightTitle}>Tools Called</span>
+                {recentToolCalls.length === 0 ? (
+                  <p className={styles.insightEmpty}>No tools used in this session.</p>
+                ) : (
+                  recentToolCalls.map((item) => (
+                    <p className={styles.insightLine} key={`${item.createdAt}-${item.name}`}>
+                      <strong>{item.name}</strong> {item.resultSummary ? `- ${item.resultSummary}` : ""}
+                    </p>
+                  ))
+                )}
+              </article>
+
+              <article className={styles.insightCard}>
+                <span className={styles.insightTitle}>Retrieved Chunks</span>
+                {recentChunks.length === 0 ? (
+                  <p className={styles.insightEmpty}>No document chunks retrieved yet.</p>
+                ) : (
+                  recentChunks.map((chunk, index) => (
+                    <p className={styles.insightLine} key={`${chunk.document_id}-${chunk.chunk_index}-${index}`}>
+                      <strong>{chunk.filename}</strong>: {chunk.snippet || chunk.content}
+                    </p>
+                  ))
+                )}
+              </article>
+            </div>
+
+            {voiceSession.memorySummary ? (
+              <p className={styles.memorySummary}>
+                <strong>Memory Summary:</strong> {voiceSession.memorySummary}
+              </p>
+            ) : null}
           </section>
 
           <TranscriptPanel agentName={selectedAgent?.name ?? "Assistant"} entries={voiceSession.transcripts} />

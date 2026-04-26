@@ -4,7 +4,6 @@ from pydantic import BaseModel
 
 from app.schemas.session import SttProvider, TtsProvider
 
-
 class SessionMetadata(BaseModel):
     session_id: str
     room_name: str

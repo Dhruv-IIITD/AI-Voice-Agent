@@ -6,7 +6,6 @@ ORDER_STATUS = {
     "C309": "Order C309 has been delivered and signed for.",
 }
 
-
 async def lookup_order_status(arguments: dict[str, str]) -> str:
     order_id = (arguments.get("order_id") or "").upper()
     if not order_id:

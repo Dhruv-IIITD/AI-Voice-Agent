@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 TIMEZONE_ALIASES = {
@@ -43,8 +43,12 @@ async def get_current_time(arguments: dict[str, str]) -> str:
     try:
         zone = ZoneInfo(timezone_name)
     except ZoneInfoNotFoundError:
-        zone = ZoneInfo("UTC")
-        timezone_name = "UTC"
+        if timezone_name == "Asia/Kolkata":
+            zone = timezone(timedelta(hours=5, minutes=30))
+            timezone_name = "Asia/Kolkata"
+        else:
+            zone = timezone.utc
+            timezone_name = "UTC"
 
     now = datetime.now(zone)
     return (

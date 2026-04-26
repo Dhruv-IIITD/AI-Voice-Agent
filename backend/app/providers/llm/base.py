@@ -22,6 +22,8 @@ class ToolPlanningResult:
 
 
 class BaseLLMClient(ABC):
+    """Deprecated compatibility interface (LangChain + LangGraph now own orchestration)."""
+
     @abstractmethod
     async def plan_tool_calls(
         self,
@@ -40,4 +42,3 @@ class BaseLLMClient(ABC):
         history: Sequence[Message],
     ) -> AsyncIterator[str]:
         raise NotImplementedError
-

@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import logging
+
 import httpx
 
 from app.providers.tts.base import BaseTTSClient, SynthesizedAudio
+
+logger = logging.getLogger(__name__)
 
 
 class ElevenLabsTTSClient(BaseTTSClient):
@@ -20,8 +24,11 @@ class ElevenLabsTTSClient(BaseTTSClient):
         self.sample_rate = sample_rate
 
     async def synthesize(self, text: str) -> SynthesizedAudio:
-        print(f"[DEBUG] Synthesizing text: '{text[:50]}...' using voice: {self._voice_id}")
-        print(f"[DEBUG] API Key: {self._api_key[:5]}...{self._api_key[-4:]}")
+        logger.info(
+            "ElevenLabs synthesis requested voice_id=%s text_length=%s",
+            self._voice_id,
+            len(text),
+        )
         async with httpx.AsyncClient(timeout=60.0) as client:
             async with client.stream(
                 "POST",
@@ -46,8 +53,11 @@ class ElevenLabsTTSClient(BaseTTSClient):
             ) as response:
                 if response.status_code != 200:
                     error_body = await response.aread()
-                    print(f"[ERROR] ElevenLabs synthesis failed with status {response.status_code}")
-                    print(f"[ERROR] Response body: {error_body.decode()}")
+                    logger.error(
+                        "ElevenLabs synthesis failed status=%s body=%s",
+                        response.status_code,
+                        error_body.decode(errors="ignore")[:500],
+                    )
                     response.raise_for_status()
 
                 chunks = bytearray()

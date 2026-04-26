@@ -33,6 +33,26 @@ export interface SessionResponse {
    agent:AgentSummary;
 }
 
+export interface DocumentSummary {
+  document_id: string;
+  filename: string;
+  chunk_count: number;
+  uploaded_at: string;
+}
+
+export interface DocumentUploadResponse {
+  document: DocumentSummary;
+}
+
+export interface DocumentListResponse {
+  documents: DocumentSummary[];
+}
+
+export interface DocumentDeleteResponse {
+  document_id: string;
+  deleted: boolean;
+}
+
 export interface TranscriptEntry {
   id: string;
   role: "user" | "assistant" | "tool";
@@ -42,6 +62,22 @@ export interface TranscriptEntry {
   stt_latency_ms?: number;
   llm_latency_ms?: number;
   tts_latency_ms?: number;
+}
+
+export interface RetrievedChunk {
+  document_id: string;
+  filename: string;
+  chunk_index: number;
+  snippet: string;
+  content: string;
+  distance?: number;
+}
+
+export interface ToolCallEntry {
+  name: string;
+  arguments: Record<string, unknown>;
+  resultSummary?: string;
+  createdAt: string;
 }
 
 export type VoiceWorkerEvent =
@@ -71,10 +107,16 @@ export type VoiceWorkerEvent =
       text: string;
       llm_latency_ms?: number;
       tts_latency_ms?: number;
+      retrieved_chunks?: RetrievedChunk[];
+      memory_summary?: string;
+    }
+  | {
+      type: "assistant_warning";
+      message: string;
     }
   | {
       type: "tool_call";
       toolName: string;
       arguments: Record<string, unknown>;
+      resultSummary?: string;
     };
-

@@ -6,7 +6,6 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -15,7 +14,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "Voice Engineering POC"
+    app_name: str = "AI Voice Agent"
     api_prefix: str = "/api"
     frontend_origin: str = "http://localhost:3000"
 
@@ -45,10 +44,15 @@ class Settings(BaseSettings):
     groq_api_key: str | None = Field(default=None, alias="GROQ_API_KEY")
     groq_model: str = Field(default="llama-3.1-8b-instant", alias="GROQ_MODEL")
     llm_temperature: float = 0.2
+    llm_timeout_seconds: float = Field(default=35.0, alias="LLM_TIMEOUT_SECONDS")
 
     default_stt_provider: Literal["deepgram", "assemblyai"] = Field(
         default="deepgram",
         alias="DEFAULT_STT_PROVIDER",
+    )
+    stt_fallback_provider: Literal["deepgram", "assemblyai"] | None = Field(
+        default=None,
+        alias="STT_FALLBACK_PROVIDER",
     )
     deepgram_api_key: str | None = Field(default=None, alias="DEEPGRAM_API_KEY")
     deepgram_model: str = Field(default="nova-3", alias="DEEPGRAM_MODEL")
@@ -58,6 +62,10 @@ class Settings(BaseSettings):
     default_tts_provider: Literal["elevenlabs", "cartesia"] = Field(
         default="elevenlabs",
         alias="DEFAULT_TTS_PROVIDER",
+    )
+    tts_fallback_provider: Literal["elevenlabs", "cartesia"] | None = Field(
+        default=None,
+        alias="TTS_FALLBACK_PROVIDER",
     )
     elevenlabs_api_key: str | None = Field(default=None, alias="ELEVENLABS_API_KEY")
     elevenlabs_model_id: str = Field(default="eleven_flash_v2_5", alias="ELEVENLABS_MODEL_ID")
@@ -81,7 +89,6 @@ class Settings(BaseSettings):
         if source.startswith("ws://"):
             return "http://" + source.removeprefix("ws://")
         return source
-
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

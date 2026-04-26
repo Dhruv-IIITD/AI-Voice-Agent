@@ -10,7 +10,7 @@ from livekit import api
 from app.agents.catalog import AgentDefinition
 from app.core.config import Settings
 from app.runtime.session_metadata import SessionMetadata
-from app.schemas.session import SessionCreateRequest, SessionCreateResponse
+from app.schemas.session import SessionCreateRequest, SessionCreateResponse, SttProvider, TtsProvider
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,7 @@ class LiveKitSessionManager:
         participant_identity = f"user-{session_id[:8]}"
         stt_provider = payload.stt_provider or self._settings.default_stt_provider
         tts_provider = payload.tts_provider or self._settings.default_tts_provider
+        self._validate_provider_selection(stt_provider=stt_provider, tts_provider=tts_provider)
         logger.info(
             "Resolved provider selection stt=%s tts=%s room_name=%s",
             stt_provider,
@@ -60,7 +61,7 @@ class LiveKitSessionManager:
                 api_secret=self._settings.livekit_api_secret,
             ) as lkapi:
                 logger.info("Creating room via LiveKit API at %s", self._settings.resolved_livekit_api_url)
-                # create a room for the session with room_name and timout of 5 minutes if empty, and max participants of 4
+                # create a room for the session with room_name 
                 await lkapi.room.create_room(
                     api.CreateRoomRequest(
                         name=room_name,
@@ -121,3 +122,30 @@ class LiveKitSessionManager:
             selected_stt_provider=stt_provider,
             selected_tts_provider=tts_provider,
         )
+
+    def _validate_provider_selection(
+        self,
+        *,
+        stt_provider: SttProvider,
+        tts_provider: TtsProvider,
+    ) -> None:
+        if stt_provider == "deepgram" and not self._settings.deepgram_api_key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Selected STT provider 'deepgram' is missing DEEPGRAM_API_KEY.",
+            )
+        if stt_provider == "assemblyai" and not self._settings.assemblyai_api_key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Selected STT provider 'assemblyai' is missing ASSEMBLYAI_API_KEY.",
+            )
+        if tts_provider == "elevenlabs" and not self._settings.elevenlabs_api_key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Selected TTS provider 'elevenlabs' is missing ELEVENLABS_API_KEY.",
+            )
+        if tts_provider == "cartesia" and not self._settings.cartesia_api_key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Selected TTS provider 'cartesia' is missing CARTESIA_API_KEY.",
+            )
