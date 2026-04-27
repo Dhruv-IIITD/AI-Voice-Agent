@@ -1,0 +1,100 @@
+.panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(67, 84, 116, 0.14);
+  background: #ffffff;
+  min-height: 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.title {
+  margin: 0;
+  font-size: 1rem;
+  color: #1d2c4d;
+}
+
+.count {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  background: rgba(67, 84, 116, 0.09);
+  color: #425273;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.list {
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+  max-height: 440px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.entry {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(67, 84, 116, 0.16);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.entryUser {
+  background: rgba(248, 250, 254, 1);
+}
+
+.entryAssistant {
+  background: rgba(241, 247, 255, 0.85);
+}
+
+.entryTool {
+  background: rgba(252, 245, 233, 0.9);
+}
+
+.entryStreaming {
+  border-style: dashed;
+}
+
+.entryHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.speaker {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #253859;
+}
+
+.meta {
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  background: rgba(67, 84, 116, 0.09);
+  color: #425273;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.body {
+  margin: 0;
+  color: #334569;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}

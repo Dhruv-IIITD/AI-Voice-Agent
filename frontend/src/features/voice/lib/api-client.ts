@@ -1,5 +1,6 @@
 import type {
   AgentSummary,
+  HealthResponse,
   DocumentDeleteResponse,
   DocumentListResponse,
   DocumentSummary,
@@ -8,7 +9,32 @@ import type {
   SessionResponse
 } from "../types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+export interface MetricsResponse {
+  total_latency_ms?: number;
+  stt_latency_ms?: number;
+  rag_retrieval_latency_ms?: number;
+  tool_execution_latency_ms?: number;
+  llm_latency_ms?: number;
+  tts_latency_ms?: number;
+  selected_stt_provider?: string;
+  selected_tts_provider?: string;
+  tools_called?: string[];
+  retrieved_chunks_count?: number;
+}
+
+export class ApiRequestError extends Error {
+  readonly status: number | null;
+  readonly path: string;
+
+  constructor(message: string, path: string, status?: number | null) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status ?? null;
+    this.path = path;
+  }
+}
+
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 
 // helper function to make API requests
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -27,17 +53,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch (caughtError) {
     const errorMessage =
       caughtError instanceof Error ? caughtError.message : "Unknown network error while reaching backend API.";
-    throw new Error(`Backend request failed (${path}): ${errorMessage}`);
+    throw new ApiRequestError(`Backend request failed (${path}): ${errorMessage}`, path);
   }
 
   if (!response.ok) {
     const contentType = response.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) {
       const payload = (await response.json()) as { detail?: string };
-      throw new Error(payload.detail || `Request failed with ${response.status}`);
+      throw new ApiRequestError(payload.detail || `Request failed with ${response.status}`, path, response.status);
     }
     const body = await response.text();
-    throw new Error(body || `Request failed with ${response.status}`);
+    throw new ApiRequestError(body || `Request failed with ${response.status}`, path, response.status);
   }
 
   return response.json() as Promise<T>;
@@ -76,4 +102,25 @@ export function deleteDocument(documentId: string): Promise<DocumentDeleteRespon
   return request<DocumentDeleteResponse>(`/documents/${documentId}`, {
     method: "DELETE"
   });
+}
+
+export function fetchBackendHealth(): Promise<HealthResponse> {
+  return request<HealthResponse>("/health", { method: "GET" });
+}
+
+export async function fetchBackendMetrics(): Promise<MetricsResponse | null> {
+  const candidatePaths = ["/metrics/latest", "/metrics"];
+
+  for (const path of candidatePaths) {
+    try {
+      return await request<MetricsResponse>(path, { method: "GET" });
+    } catch (caughtError) {
+      if (caughtError instanceof ApiRequestError && caughtError.status === 404) {
+        continue;
+      }
+      throw caughtError;
+    }
+  }
+
+  return null;
 }

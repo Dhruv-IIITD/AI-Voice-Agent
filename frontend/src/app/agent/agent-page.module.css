@@ -1,0 +1,84 @@
+.layout {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.sidebar {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.mainColumn {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.agentGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.agentSelectionCard {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(67, 84, 116, 0.14);
+  background: #ffffff;
+}
+
+.agentSelectionTitle {
+  margin: 0;
+  font-size: 1rem;
+  color: #1d2c4d;
+}
+
+.agentSelectionSubtitle {
+  margin: 5px 0 0;
+  color: #556280;
+  line-height: 1.45;
+  font-size: 0.88rem;
+}
+
+.docLinkCard {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(67, 84, 116, 0.14);
+  background: rgba(248, 250, 254, 0.92);
+}
+
+.docLinkText {
+  margin: 0;
+  color: #495c84;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.docLinkButton {
+  width: max-content;
+}
+
+.errorCard {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(235, 87, 87, 0.28);
+  background: rgba(235, 87, 87, 0.09);
+  color: #8f3d3d;
+  line-height: 1.5;
+}
+
+.hiddenAudio {
+  display: none;
+}
+
+@media (max-width: 1120px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}

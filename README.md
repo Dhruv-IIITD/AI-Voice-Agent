@@ -1,7 +1,5 @@
 # AI Voice Agent
 
-Live demo: [https://ai-voice-agent-production-a0a7.up.railway.app/](https://ai-voice-agent-production-a0a7.up.railway.app/) (Link Expired)
-
 ## Project Description
 This project is a real-time, browser-based voice AI platform that supports multi-provider STT/TTS, LangGraph-based orchestration, RAG over uploaded documents, tool calling, session memory, and streaming voice responses.
 
@@ -148,22 +146,8 @@ cd frontend && npm run dev
   - `[ToolCall] ...`
   - `[RAG] ...`
 
-## Known Limitations
-- Tool selection is heuristic-based (not full function-calling planner yet).
-- Automatic provider failover is placeholder-only today (not active switching).
-- RAG is local-storage based (single-instance persistence model).
-- End-of-turn detection depends on provider behavior and environment noise.
-
 ## Future Improvements
 - Add automatic STT/TTS/LLM provider fallback routing.
 - Add richer tool planning with explicit model function-calling contracts.
 - Add metrics endpoint/dashboard and long-session analytics.
 - Add multi-session memory persistence options.
-
-## Local Testing
-See `docs/TESTING.md` for the full checklist and test phrases.
-
-## Resume Bullets (LaTeX)
-- `\resumeItem{Built a real-time agentic voice AI platform with browser microphone input, LiveKit streaming, FastAPI backend orchestration, and low-latency spoken responses.}`
-- `\resumeItem{Implemented LangChain + LangGraph orchestration with RAG over uploaded documents, session memory, and tool-calling workflows for grounded multi-turn voice interactions.}`
-- `\resumeItem{Engineered modular provider routing across STT/TTS/LLM adapters (Deepgram, AssemblyAI, ElevenLabs, Cartesia, OpenRouter) with structured observability and production-ready error handling.}`

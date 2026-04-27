@@ -1,0 +1,56 @@
+.card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(67, 84, 116, 0.14);
+  background: #ffffff;
+}
+
+.title {
+  margin: 0;
+  font-size: 1rem;
+  color: #1d2c4d;
+}
+
+.subtitle {
+  margin: 5px 0 0;
+  color: #556280;
+  line-height: 1.45;
+  font-size: 0.88rem;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.primaryButton {
+  background: linear-gradient(145deg, #2f6cff, #1fa473);
+  color: #f5f8ff;
+}
+
+.primaryButton:disabled {
+  opacity: 0.65;
+}
+
+.secondaryButton {
+  border-color: rgba(67, 84, 116, 0.2);
+  background: rgba(67, 84, 116, 0.08);
+  color: #344a73;
+}
+
+.secondaryButton:disabled {
+  opacity: 0.55;
+}
+
+.dangerButton {
+  border-color: rgba(235, 87, 87, 0.3);
+  background: rgba(235, 87, 87, 0.1);
+  color: #9f3e3e;
+}

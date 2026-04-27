@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 
-import { SiteHeader } from "@/components/layout/site-header";
+import { AppNavbar } from "@/components/navigation/app-navbar";
+import { AppProviders } from "@/components/providers/app-providers";
 
 import "./globals.css";
 
@@ -17,19 +18,21 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VoiceAI Control Room",
+  title: "Agentic Voice AI",
   description:
-    "Browser-based voice AI console with LiveKit transport, switchable speech providers, and specialized agents."
+    "Real-Time Agentic Voice AI platform for document-grounded voice conversations with tools, memory, and latency observability."
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className={`${dmSans.variable} ${jetBrainsMono.variable}`}>
-        <div className="appBackdrop">
-          <SiteHeader />
-          <div className="pageFrame">{children}</div>
-        </div>
+        <AppProviders>
+          <div className="appBackdrop">
+            <AppNavbar />
+            <div className="pageFrame">{children}</div>
+          </div>
+        </AppProviders>
       </body>
     </html>
   );

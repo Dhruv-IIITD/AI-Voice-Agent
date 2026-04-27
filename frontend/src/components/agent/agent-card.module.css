@@ -1,0 +1,71 @@
+.card {
+  width: 100%;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(67, 84, 116, 0.16);
+  background: #ffffff;
+  text-align: left;
+}
+
+.selected {
+  border-color: var(--agent-accent);
+  box-shadow: inset 0 0 0 1px var(--agent-accent);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.titleBlock {
+  display: grid;
+  gap: 6px;
+}
+
+.title {
+  margin: 0;
+  font-size: 1rem;
+  color: #1f2e4f;
+}
+
+.description {
+  margin: 0;
+  color: #556280;
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+.state {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(67, 84, 116, 0.24);
+  background: rgba(67, 84, 116, 0.08);
+  color: #3c4f73;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.toolList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tool {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  background: rgba(47, 108, 255, 0.1);
+  color: #2c4b90;
+  font-size: 0.76rem;
+  font-weight: 600;
+}

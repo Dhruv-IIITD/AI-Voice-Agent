@@ -8,7 +8,7 @@ import {
   type RemoteTrackPublication
 } from "livekit-client";
 
-import { createSession, fetchAgents } from "../lib/api-client";
+import { createSession } from "../lib/api-client";
 import { MOCK_AGENTS, createMockSession } from "../lib/mock-data";
 import type {
   AssistantState,
@@ -41,26 +41,54 @@ function debugLog(message: string, details?: unknown) {
 }
 
 const MOCK_AGENT_BEHAVIORS = {
-  support: {
-    userPrompt: "Can you help me check what kinds of questions you can answer?",
-    toolName: "lookup_faq",
-    toolArguments: { question: "what can you help me with?" },
+  document_research: {
+    userPrompt: "Summarize my uploaded project README and focus on architecture.",
+    toolName: "search_uploaded_docs",
+    toolArguments: { query: "project architecture and data flow" },
     assistantReply:
-      "Absolutely. I can answer pricing, integrations, and security questions, and I can also check demo order IDs like A100, B205, or C309."
+      "I found architecture notes in your uploaded docs. The flow is browser mic to LiveKit transport, STT for transcription, LangGraph for orchestration, RAG retrieval for grounding, then LLM reasoning and TTS playback."
+  },
+  interview_coach: {
+    userPrompt: "Use my resume and run a backend interview question for me.",
+    toolName: "summarize_conversation",
+    toolArguments: {},
+    assistantReply:
+      "Great. Based on your resume context, here is a mock interview prompt: explain how you would design fault-tolerant realtime transcription with provider failover and latency monitoring."
+  },
+  project_explainer: {
+    userPrompt: "Explain this voice AI project architecture for recruiters.",
+    toolName: "search_uploaded_docs",
+    toolArguments: { query: "voice ai architecture for recruiter explanation" },
+    assistantReply:
+      "This project is not a basic chatbot. It runs live speech input, structured agent planning, memory-aware context, and document-grounded answers, with transcript and latency visibility in the UI."
+  },
+  technical_tutor: {
+    userPrompt: "Teach me this concept from my uploaded notes in simpler language.",
+    toolName: "search_uploaded_docs",
+    toolArguments: { query: "simple explanation from uploaded notes" },
+    assistantReply:
+      "Sure. In simple terms, RAG means the agent first searches your files for relevant chunks, then uses those chunks while generating an answer so responses stay grounded instead of guessing."
+  },
+  support: {
+    userPrompt: "Summarize my uploaded project README and focus on architecture.",
+    toolName: "search_uploaded_docs",
+    toolArguments: { query: "project architecture and data flow" },
+    assistantReply:
+      "I found architecture notes in your uploaded docs. The flow is browser mic to LiveKit transport, STT for transcription, LangGraph for orchestration, RAG retrieval for grounding, then LLM reasoning and TTS playback."
   },
   scheduler: {
-    userPrompt: "Can you help me figure out the current time in India and what scheduling help you offer?",
-    toolName: "current_time",
-    toolArguments: { timezone: "Asia/Kolkata" },
+    userPrompt: "Use my resume and run a backend interview question for me.",
+    toolName: "summarize_conversation",
+    toolArguments: {},
     assistantReply:
-      "Absolutely. I can help with time-zone questions, quick scheduling guidance, and policy FAQs. In the full stack version I would also call the current_time tool before answering time-sensitive questions."
+      "Great. Based on your resume context, here is a mock interview prompt: explain how you would design fault-tolerant realtime transcription with provider failover and latency monitoring."
   },
   calculator: {
-    userPrompt: "Can you calculate 24 divided by 3 plus 7 for me?",
-    toolName: "calculate_expression",
-    toolArguments: { expression: "24 / 3 + 7" },
+    userPrompt: "Explain this voice AI project architecture for recruiters.",
+    toolName: "search_uploaded_docs",
+    toolArguments: { query: "voice ai architecture for recruiter explanation" },
     assistantReply:
-      "Absolutely. The result of 24 divided by 3 plus 7 is 15, and I can keep handling follow-up arithmetic in the same session."
+      "This project is not a basic chatbot. It runs live speech input, structured agent planning, memory-aware context, and document-grounded answers, with transcript and latency visibility in the UI."
   }
 } as const;
 
@@ -95,8 +123,6 @@ export function useVoiceSession() {
       }
     };
   }, []);
-
-  const fetchAgentCatalog = useCallback(async () => fetchAgents(), []);
 
   const clearMockTimers = useCallback(() => {
     for (const timerId of mockTimersRef.current) {
@@ -333,10 +359,16 @@ export function useVoiceSession() {
     assistantStateRef.current = "disconnected";
   }, [clearMockTimers]);
 
-  const connectMock = useCallback(async (payload: SessionCreateRequest) => {
+  const connectMock = useCallback(
+    async (payload: SessionCreateRequest, scenarioId?: string) => {
     debugLog("starting mock session flow", payload);
     const agent = MOCK_AGENTS.find((entry) => entry.id === payload.agent_id) ?? MOCK_AGENTS[0];
-    const mockBehavior = MOCK_AGENT_BEHAVIORS[agent.id as keyof typeof MOCK_AGENT_BEHAVIORS] ?? MOCK_AGENT_BEHAVIORS.support;
+      const mockBehavior =
+        (scenarioId
+          ? MOCK_AGENT_BEHAVIORS[scenarioId as keyof typeof MOCK_AGENT_BEHAVIORS]
+          : undefined) ??
+        MOCK_AGENT_BEHAVIORS[agent.id as keyof typeof MOCK_AGENT_BEHAVIORS] ??
+        MOCK_AGENT_BEHAVIORS.document_research;
     const sessionResponse = createMockSession(
       agent,
       payload.display_name,
@@ -428,9 +460,18 @@ export function useVoiceSession() {
         state: "listening"
       });
     });
-  }, [handleVoiceEvent, scheduleMockEvent]);
+    },
+    [handleVoiceEvent, scheduleMockEvent]
+  );
 
-  const connect = useCallback(async (payload: SessionCreateRequest, options?: { mockMode?: boolean }) => {
+  const connect = useCallback(
+    async (
+      payload: SessionCreateRequest,
+      options?: {
+        mockMode?: boolean;
+        mockScenarioId?: string;
+      }
+    ) => {
     debugLog("connect requested", { payload, options });
     await disconnect();
 
@@ -448,7 +489,7 @@ export function useVoiceSession() {
 
     if (options?.mockMode) {
       debugLog("entering mock mode connect flow");
-      await connectMock(payload);
+      await connectMock(payload, options.mockScenarioId);
       return;
     }
 
@@ -556,7 +597,9 @@ export function useVoiceSession() {
       setConnectionState("error");
       setAssistantState("disconnected");
     }
-  }, [attachAudioTrack, connectMock, detachAudioTrack, disconnect, handleVoiceEvent, syncLiveMicrophone]);
+    },
+    [attachAudioTrack, connectMock, detachAudioTrack, disconnect, handleVoiceEvent, syncLiveMicrophone]
+  );
 
   const toggleMute = useCallback(async () => {
     const currentRoom = roomRef.current;
@@ -586,7 +629,6 @@ export function useVoiceSession() {
     connectionState,
     disconnect,
     error,
-    fetchAgentCatalog,
     isConnected: connectionState === "connected",
     isMuted,
     session,

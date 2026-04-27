@@ -1,0 +1,43 @@
+.card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(67, 84, 116, 0.14);
+  background: #ffffff;
+}
+
+.title {
+  margin: 0;
+  font-size: 1rem;
+  color: #1d2c4d;
+}
+
+.rows {
+  display: grid;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(67, 84, 116, 0.14);
+  background: rgba(248, 250, 254, 0.9);
+}
+
+.label {
+  color: #526387;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.value {
+  color: #283a5e;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-align: right;
+}

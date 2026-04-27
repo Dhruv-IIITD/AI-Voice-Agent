@@ -1,0 +1,50 @@
+.banner {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-color);
+}
+
+.title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--title-color);
+}
+
+.text {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.connected {
+  --border-color: rgba(56, 161, 105, 0.22);
+  --bg-color: rgba(56, 161, 105, 0.08);
+  --title-color: #1f694d;
+  --text-color: #215d47;
+}
+
+.unavailable {
+  --border-color: rgba(235, 87, 87, 0.26);
+  --bg-color: rgba(235, 87, 87, 0.08);
+  --title-color: #9f3e3e;
+  --text-color: #7e3636;
+}
+
+.preview {
+  --border-color: rgba(225, 151, 68, 0.28);
+  --bg-color: rgba(225, 151, 68, 0.1);
+  --title-color: #8f5d21;
+  --text-color: #75502a;
+}
+
+.checking {
+  --border-color: rgba(88, 117, 185, 0.28);
+  --bg-color: rgba(88, 117, 185, 0.08);
+  --title-color: #355086;
+  --text-color: #2f456f;
+}

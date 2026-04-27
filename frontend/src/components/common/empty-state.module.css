@@ -1,0 +1,20 @@
+.empty {
+  display: grid;
+  gap: 8px;
+  padding: 22px;
+  border-radius: 12px;
+  border: 1px dashed rgba(67, 84, 116, 0.28);
+  background: rgba(248, 250, 254, 0.9);
+}
+
+.title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #2c3b58;
+}
+
+.description {
+  margin: 0;
+  color: #516282;
+  line-height: 1.6;
+}

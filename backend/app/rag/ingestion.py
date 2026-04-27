@@ -34,7 +34,7 @@ def _extract_pdf(payload: bytes) -> str:
             page_text.append(extracted)
     return "\n\n".join(page_text)
 
-
+ 
 def _extract_text(filename: str, payload: bytes) -> str:
     extension = Path(filename).suffix.lower()
     if extension == ".txt":

@@ -1,0 +1,54 @@
+.card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(67, 84, 116, 0.14);
+  background: #ffffff;
+}
+
+.title {
+  margin: 0;
+  font-size: 1rem;
+  color: #1d2c4d;
+}
+
+.description {
+  margin: 6px 0 0;
+  color: #556280;
+  line-height: 1.45;
+  font-size: 0.88rem;
+}
+
+.fields {
+  display: grid;
+  gap: 10px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.label {
+  font-size: 0.78rem;
+  color: #506284;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.select {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(67, 84, 116, 0.2);
+  padding: 0 10px;
+  color: #2a3c60;
+  background: #ffffff;
+}
+
+.note {
+  margin: 0;
+  color: #5a6d90;
+  font-size: 0.8rem;
+}

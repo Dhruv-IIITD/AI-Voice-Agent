@@ -30,7 +30,12 @@ export interface SessionResponse {
   token:string; // todo check if need to hide this
   selected_stt_provider:SttProvider;
   selected_tts_provider:TtsProvider;
-   agent:AgentSummary;
+  agent:AgentSummary;
+}
+
+export interface HealthResponse {
+  status: string;
+  service: string;
 }
 
 export interface DocumentSummary {

@@ -1,0 +1,20 @@
+.section {
+  display: grid;
+  gap: 12px;
+}
+
+.source {
+  margin: 0;
+  color: #556280;
+  font-size: 0.86rem;
+}
+
+.errorCard {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(235, 87, 87, 0.28);
+  background: rgba(235, 87, 87, 0.09);
+  color: #8f3d3d;
+  line-height: 1.5;
+}
