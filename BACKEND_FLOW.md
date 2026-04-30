@@ -316,6 +316,3 @@ Note:
 | TTS synthesis fails | Exception in `text_to_speech.synthesize` is caught; backend sends `assistant_warning`; state returns to `listening`; no audio playback. |
 | TTS playback fails | Exception in `tts_audio_player.play` is caught; backend sends `assistant_warning`; finally returns to `listening`. |
 
-## How I Explain This in an Interview
-
-In my backend, the voice flow is turn-based. User audio goes to STT, and when I get a final transcript I call `generate_and_stream_response(user_text)`. That calls `ConversationSession.reply`, which runs my LangGraph pipeline in `VoiceAgentGraph.run`. The graph has three nodes: retrieve context, generate response, and update memory. In retrieval, I query Chroma through `retrieve_serialized_chunks`, build `rag_context`, and include it in `build_prompt`. Then `generate_response_text` calls the Groq chat model and returns the final text. I send that text to the frontend as `assistant_complete` along with retrieved chunks and memory summary, then I synthesize speech and play audio frames into LiveKit. State moves `listening -> thinking -> speaking -> listening`, and each step has fallbacks so the session still returns text even if RAG, LLM, or TTS has an issue.
