@@ -1,7 +1,7 @@
 # AI Voice Agent
 
 ## Project Description
-This project is a real-time, browser-based voice AI platform that supports multi-provider STT/TTS, LangGraph-based orchestration, RAG over uploaded documents, tool calling, session memory, and streaming voice responses.
+This project is a real-time, browser-based voice AI platform that supports multi-provider STT/TTS, LangGraph-based orchestration, RAG over uploaded documents, and session memory.
 
 ## Problem It Solves
 Most voice assistants either feel high-latency or have rigid pipelines. This system focuses on a practical developer architecture that keeps voice interactions responsive while supporting grounded document answers and agent workflows.
@@ -11,8 +11,7 @@ Most voice assistants either feel high-latency or have rigid pipelines. This sys
 - LangChain + LangGraph orchestration for structured backend response generation.
 - RAG over uploaded `.txt` and `.pdf` documents with local Chroma vector storage.
 - Session-scoped memory for follow-up and conversational continuity.
-- Local/mock tool calling (`document search`, `conversation summary`, `session context`, `mock ticket creation`) plus existing demo agent tools.
-- Streaming text deltas + incremental TTS playback for reduced perceived latency.
+- Final-response LLM generation with single-pass TTS playback.
 - Session observability via transcript events and latency metrics (`STT`, `LLM`, optional `TTS` fields).
 
 ## Architecture (Text Diagram)
@@ -24,9 +23,8 @@ Browser Microphone
   -> LangGraph Agent Orchestrator
        -> Session Memory
        -> RAG Retrieval (if relevant)
-       -> Tool Selection/Execution (if relevant)
-       -> LangChain Chat Model (OpenRouter)
-  -> Streaming Assistant Text Events
+       -> LangChain Chat Model (Groq)
+  -> Final Assistant Text Event
   -> TTS Provider (ElevenLabs/Cartesia)
   -> LiveKit Audio Track
   -> Browser Playback
@@ -38,7 +36,7 @@ Browser Microphone
 - Voice Worker: `Python`, `LiveKit Agents`
 - Orchestration: `LangChain`, `LangGraph`
 - Vector/RAG: `ChromaDB`, `langchain-text-splitters`, `pypdf`
-- Providers: `OpenRouter`, `Deepgram`, `AssemblyAI`, `ElevenLabs`, `Cartesia`
+- Providers: `Groq`, `Deepgram`, `AssemblyAI`, `ElevenLabs`, `Cartesia`
 
 ## Orchestrator Location
 LangGraph orchestration lives in `backend/app/agent/`:
@@ -47,16 +45,14 @@ LangGraph orchestration lives in `backend/app/agent/`:
 - `prompts.py`
 - `llm.py`
 - `memory.py`
-- `tools/`
 
 ## Voice Pipeline Flow
 1. Browser streams mic audio to LiveKit.
 2. Worker streams audio to selected STT provider.
 3. Final transcript enters LangGraph (`[AgentGraph] Received transcript`).
-4. Graph loads session memory, runs retrieval/tool logic as needed, and calls LangChain LLM.
-5. Text is streamed to frontend as `assistant_delta` events.
-6. Worker synthesizes chunked TTS in parallel and plays audio immediately.
-7. Final message and metadata are emitted as `assistant_complete`.
+4. Graph retrieves document context and calls LangChain LLM for one final response.
+5. Worker emits `assistant_complete` with response metadata.
+6. Worker synthesizes and plays one full TTS response.
 
 ## Setup
 ### Backend
@@ -72,13 +68,13 @@ Create `backend/.env` with required values:
 - `LIVEKIT_API_URL` (optional if same as websocket host)
 - `LIVEKIT_API_KEY`
 - `LIVEKIT_API_SECRET`
-- `OPENROUTER_API_KEY`
+- `GROQ_API_KEY`
 - STT/TTS keys for selected providers:
   - `DEEPGRAM_API_KEY` or `ASSEMBLYAI_API_KEY`
   - `ELEVENLABS_API_KEY` or `CARTESIA_API_KEY`
 
 Useful optional env vars:
-- `OPENROUTER_MODEL`
+- `GROQ_MODEL`
 - `LLM_TIMEOUT_SECONDS`
 - `RAG_EMBEDDING_PROVIDER`
 - `RAG_STORAGE_DIR`
@@ -118,36 +114,22 @@ cd frontend && npm run dev
 - During response generation, LangGraph retrieves relevant chunks before LLM generation.
 - If retrieval fails or no chunks match, conversation continues without document grounding.
 
-## Tool Calling
-- Tool selection happens in the LangGraph workflow.
-- Current tools include:
-  - `search_uploaded_docs(query)`
-  - `summarize_conversation()`
-  - `create_mock_ticket(title, description)`
-  - `get_session_context()`
-  - existing demo tools (`current_time`, `calculate_expression`, FAQ/order-status helpers)
-- Tool calls are surfaced to frontend through `tool_call` events.
-
 ## Session Memory
 - Memory is scoped to each active voice session.
-- Stores recent user/assistant turns and maintains a rolling summary for longer chats.
+- Stores recent user/assistant turns and provides a lightweight summary.
 - Improves follow-up handling (e.g., �explain that again�, �what did I ask earlier?�).
 
 ## Latency & Observability
 - Event stream includes:
   - `user_transcript` with `stt_latency_ms`
   - `assistant_complete` with `llm_latency_ms` (and optional `tts_latency_ms`)
-  - `tool_call` summaries
 - Operational logs include:
   - `[AgentGraph] Received transcript`
-  - `[LangChainLLM] Calling OpenRouter model`
+  - `[LangChainLLM] Calling Groq model`
   - `[AgentGraph] Final response generated`
-  - `[Memory] ...`
-  - `[ToolCall] ...`
   - `[RAG] ...`
 
 ## Future Improvements
 - Add automatic STT/TTS/LLM provider fallback routing.
-- Add richer tool planning with explicit model function-calling contracts.
 - Add metrics endpoint/dashboard and long-session analytics.
 - Add multi-session memory persistence options.

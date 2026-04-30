@@ -68,11 +68,11 @@ async def create_session(
     )
     return response
 
-
 @router.post("/documents/upload", response_model=DocumentUploadResponse)
 async def upload_document(file: UploadFile = File(...)) -> DocumentUploadResponse:
     logger.info("Document upload requested filename=%s", file.filename)
     try:
+        # Upload the document into RAG Pipeline
         document = await ingest_uploaded_document(upload=file)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

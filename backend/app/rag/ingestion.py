@@ -2,67 +2,113 @@ from __future__ import annotations
 
 import io
 import logging
-import os
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import UploadFile
+from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pypdf import PdfReader
 
 from app.rag.schemas import StoredDocument
 from app.rag.vector_store import RagVectorStore, get_vector_store
 
-SUPPORTED_EXTENSIONS = {".txt", ".pdf"}
+
+SUPPORTED_EXTENSIONS = {".txt", ".md", ".pdf"}
+
 logger = logging.getLogger(__name__)
 
 
-def _extract_txt(payload: bytes) -> str:
-    return payload.decode("utf-8", errors="ignore")
+def _load_text_document(filename: str, payload: bytes, file_type: str) -> list[Document]:
+    text = payload.decode("utf-8", errors="ignore").strip()
+
+    if not text:
+        return []
+
+    return [
+        Document(
+            page_content=text,
+            metadata={
+                "source": filename,
+                "filename": filename,
+                "file_type": file_type,
+            },
+        )
+    ]
 
 
-def _extract_pdf(payload: bytes) -> str:
+def _load_pdf_documents(filename: str, payload: bytes) -> list[Document]:
     try:
         reader = PdfReader(io.BytesIO(payload))
     except Exception as exc:
         raise ValueError("Unable to parse PDF file.") from exc
 
-    page_text: list[str] = []
-    for page in reader.pages:
-        extracted = page.extract_text() or ""
-        if extracted.strip():
-            page_text.append(extracted)
-    return "\n\n".join(page_text)
+    documents: list[Document] = []
 
- 
-def _extract_text(filename: str, payload: bytes) -> str:
+    for page_index, page in enumerate(reader.pages):
+        text = (page.extract_text() or "").strip()
+
+        if not text:
+            continue
+
+        documents.append(
+            Document(
+                page_content=text,
+                metadata={
+                    "source": filename,
+                    "filename": filename,
+                    "file_type": ".pdf",
+                    "page": page_index + 1,
+                },
+            )
+        )
+
+    return documents
+
+
+def _load_uploaded_documents(filename: str, payload: bytes) -> list[Document]:
     extension = Path(filename).suffix.lower()
-    if extension == ".txt":
-        return _extract_txt(payload)
+
+    if extension in {".txt", ".md"}:
+        return _load_text_document(filename, payload, extension)
+
     if extension == ".pdf":
-        return _extract_pdf(payload)
+        return _load_pdf_documents(filename, payload)
+
     raise ValueError(f"Unsupported file type: {extension}")
 
 
-def _split_text(content: str) -> list[str]:
-    try:
-        chunk_size = max(200, int(os.getenv("RAG_CHUNK_SIZE", "900")))
-    except ValueError:
-        logger.warning("[RAG] Invalid RAG_CHUNK_SIZE provided; falling back to 900.")
-        chunk_size = 900
-
-    try:
-        chunk_overlap = max(0, int(os.getenv("RAG_CHUNK_OVERLAP", "120")))
-    except ValueError:
-        logger.warning("[RAG] Invalid RAG_CHUNK_OVERLAP provided; falling back to 120.")
-        chunk_overlap = 120
+def _split_documents(documents: list[Document]) -> list[Document]:
+    if not documents:
+        return []
 
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len,
+        separators=["\n\n", "\n", " ", ""],
     )
-    chunks = [chunk.strip() for chunk in splitter.split_text(content) if chunk.strip()]
-    return chunks
+
+    chunks = splitter.split_documents(documents)
+    cleaned_chunks: list[Document] = []
+
+    for index, chunk in enumerate(chunks):
+        content = chunk.page_content.strip()
+
+        if not content:
+            continue
+
+        chunk.page_content = content
+        chunk.metadata["chunk_index"] = index
+        cleaned_chunks.append(chunk)
+
+    logger.info(
+        "[RAG] Split %s document(s) into %s chunk(s).",
+        len(documents),
+        len(cleaned_chunks),
+    )
+
+    return cleaned_chunks
 
 
 async def ingest_uploaded_document(
@@ -72,24 +118,40 @@ async def ingest_uploaded_document(
 ) -> StoredDocument:
     filename = upload.filename or "uploaded-document.txt"
     extension = Path(filename).suffix.lower()
+
     if extension not in SUPPORTED_EXTENSIONS:
         supported = ", ".join(sorted(SUPPORTED_EXTENSIONS))
-        raise ValueError(f"Unsupported file type '{extension}'. Supported types: {supported}")
+        raise ValueError(
+            f"Unsupported file type '{extension}'. Supported types: {supported}"
+        )
 
     payload = await upload.read()
+
     if not payload:
         raise ValueError("Uploaded file is empty.")
 
-    text = _extract_text(filename, payload).strip()
-    if not text:
+    documents = _load_uploaded_documents(filename, payload)
+
+    if not documents:
         raise ValueError("No readable text found in the uploaded file.")
 
-    chunks = _split_text(text)
-    if not chunks:
+    chunk_documents = _split_documents(documents)
+
+    if not chunk_documents:
         raise ValueError("Document text could not be chunked.")
+
+    chunks = [chunk.page_content for chunk in chunk_documents]
 
     store = vector_store or get_vector_store()
     document_id = uuid4().hex
+
+    logger.info(
+        "[RAG] Ingesting filename=%s document_id=%s chunks=%s",
+        filename,
+        document_id,
+        len(chunks),
+    )
+
     return store.add_document_chunks(
         document_id=document_id,
         filename=filename,

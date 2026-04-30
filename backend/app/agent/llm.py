@@ -8,9 +8,9 @@ from typing import Any
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 
-from app.agent.state import ChatHistoryMessage, DeltaCallback
+from app.agent.state import ChatHistoryMessage
 
 logger = logging.getLogger(__name__)
 
@@ -51,28 +51,17 @@ def _to_langchain_messages(
 
 @lru_cache(maxsize=1)
 def get_chat_model() -> BaseChatModel:
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        raise ValueError("OPENROUTER_API_KEY is required for LangChain OpenRouter orchestration.")
+        raise ValueError("GROQ_API_KEY is required for LangChain Groq orchestration.")
 
-    model = os.getenv("OPENROUTER_MODEL", "qwen/qwen3.6-plus:free")
+    model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
     temperature = float(os.getenv("LLM_TEMPERATURE", "0.2"))
 
-    headers: dict[str, str] = {}
-    site_url = os.getenv("OPENROUTER_SITE_URL")
-    app_name = os.getenv("OPENROUTER_APP_NAME")
-    if site_url:
-        headers["HTTP-Referer"] = site_url
-    if app_name:
-        headers["X-Title"] = app_name
-
-    return ChatOpenAI(
+    return ChatGroq(
         model=model,
         api_key=api_key,
-        base_url="https://openrouter.ai/api/v1",
         temperature=temperature,
-        streaming=True,
-        default_headers=headers or None,
     )
 
 
@@ -80,44 +69,24 @@ async def generate_response_text(
     *,
     system_prompt: str,
     history: list[ChatHistoryMessage],
-    on_delta: DeltaCallback | None = None,
 ) -> str:
-    fallback_text = "Sorry, I had trouble generating that response. Please try again."
+    fallback_text = "Sorry, I ran into an issue while generating the response."
     timeout_seconds = float(os.getenv("LLM_TIMEOUT_SECONDS", "35"))
 
     async def _run_generation() -> str:
         model = get_chat_model()
-        logger.info("[LangChainLLM] Calling OpenRouter model=%s", model.model_name)
+        logger.info("[LangChainLLM] Calling Groq model=%s", model.model_name)
 
         messages = _to_langchain_messages(system_prompt=system_prompt, history=history)
-        full_response_parts: list[str] = []
-
-        async for chunk in model.astream(messages):
-            delta = _content_to_text(getattr(chunk, "content", ""))
-            if not delta:
-                continue
-            full_response_parts.append(delta)
-            if on_delta is not None:
-                await on_delta(delta)
-
-        final_text = "".join(full_response_parts).strip()
-        if final_text:
-            return final_text
-
-        # Fallback to non-streaming invoke if provider returns an empty stream.
+        # Final-response mode: one LLM call per user turn.
         response = await model.ainvoke(messages)
-        final_text = _content_to_text(getattr(response, "content", "")).strip()
-        if final_text and on_delta is not None:
-            await on_delta(final_text)
-        return final_text
+        return _content_to_text(getattr(response, "content", "")).strip()
 
     try:
-        return await asyncio.wait_for(_run_generation(), timeout=timeout_seconds)
+        final_text = await asyncio.wait_for(_run_generation(), timeout=timeout_seconds)
+        return final_text or fallback_text
     except asyncio.TimeoutError:
         logger.exception("[LangChainLLM] LLM call timed out timeout_seconds=%s", timeout_seconds)
     except Exception:
         logger.exception("[LangChainLLM] LLM call failed")
-
-    if on_delta is not None:
-        await on_delta(fallback_text)
     return fallback_text

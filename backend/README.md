@@ -20,9 +20,8 @@ Fill in these required values in `backend/.env`:
 - `LIVEKIT_API_URL`
 - `LIVEKIT_API_KEY`
 - `LIVEKIT_API_SECRET`
-- `OPENROUTER_API_KEY`
-- `OPENROUTER_MODEL`
-- if you want to avoid paid OpenRouter models entirely, keep `OPENROUTER_REQUIRE_FREE=true` and use `OPENROUTER_MODEL=qwen/qwen3.6-plus:free` or another model ending in `:free`
+- `GROQ_API_KEY`
+- `GROQ_MODEL` (optional, defaults to `llama-3.1-8b-instant`)
 - the provider keys you plan to use, such as `DEEPGRAM_API_KEY` and `ELEVENLABS_API_KEY`
 
 Run the FastAPI app with:

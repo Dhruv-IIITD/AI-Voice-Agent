@@ -5,7 +5,7 @@ httpx
 langchain
 langchain-text-splitters
 langgraph
-langchain-openai
+langchain-groq
 livekit
 livekit-agents
 openai

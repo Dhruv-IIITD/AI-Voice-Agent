@@ -9,7 +9,6 @@ pyproject.toml
 ./app/livekit/session_manager.py
 ./app/providers/llm/base.py
 ./app/providers/llm/factory.py
-./app/providers/llm/openrouter_provider.py
 ./app/providers/stt/assemblyai.py
 ./app/providers/stt/base.py
 ./app/providers/stt/deepgram.py

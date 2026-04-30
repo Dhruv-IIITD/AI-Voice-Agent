@@ -273,181 +273,80 @@ class AIVoiceWorker:
         async with self.response_lock:
             logger.info("Handling user turn text=%s", user_text)
             await self.update_assistant_state("thinking")
+            start_llm = time.perf_counter()
+            final_text = ""
+            retrieved_chunks: list[dict[str, object]] = []
+            memory_summary = ""
 
-            tts_queue: asyncio.Queue[str | None] = asyncio.Queue()
-            tts_warning_sent = {"value": False}
+            reply = await self.conversation_session.reply(user_text)
+            final_text = str(reply.text or "").strip()
+            retrieved_chunks = list(reply.retrieved_chunks or [])
+            memory_summary = str(reply.memory_summary or "")
 
-            async def tts_worker() -> None:
-                while True:
-                    chunk = await tts_queue.get()
-                    if chunk is None:
-                        return
+            llm_latency_ms = (time.perf_counter() - start_llm) * 1000
+            if not final_text:
+                final_text = "I did not generate a response."
 
-                    try:
-                        audio = await self.text_to_speech.synthesize(chunk)
-                    except Exception:
-                        logger.exception(
-                            "TTS synthesis failed provider=%s chunk_length=%s",
-                            self.metadata.tts_provider,
-                            len(chunk),
-                        )
-                        if not tts_warning_sent["value"]:
-                            tts_warning_sent["value"] = True
-                            await self.publish_assistant_warning(
-                                "Voice playback is having trouble right now. Text responses are still available."
-                            )
-                        continue
+            logger.info(
+                "Assistant complete text_length=%s rag_chunks=%s memory_summary_chars=%s",
+                len(final_text),
+                len(retrieved_chunks),
+                len(memory_summary),
+            )
 
-                    if not audio.audio:
-                        logger.warning(
-                            "TTS returned empty audio provider=%s chunk_length=%s",
-                            self.metadata.tts_provider,
-                            len(chunk),
-                        )
-                        continue
+            await publish_voice_event(
+                self.room,
+                {
+                    "type": "assistant_complete",
+                    "text": final_text,
+                    "llm_latency_ms": round(llm_latency_ms),
+                    "retrieved_chunks": retrieved_chunks,
+                    "memory_summary": memory_summary,
+                },
+            )
 
-                    try:
-                        await self.tts_audio_player.play(audio.audio)
-                    except Exception:
-                        logger.exception(
-                            "TTS playback failed provider=%s chunk_length=%s",
-                            self.metadata.tts_provider,
-                            len(chunk),
-                        )
-                        if not tts_warning_sent["value"]:
-                            tts_warning_sent["value"] = True
-                            await self.publish_assistant_warning(
-                                "Voice playback is having trouble right now. Text responses are still available."
-                            )
-                        continue
+            await self.update_assistant_state("speaking")
+            logger.info(
+                "Starting single-pass TTS playback tts_provider=%s text_length=%s",
+                self.metadata.tts_provider,
+                len(final_text),
+            )
 
-            tts_task = asyncio.create_task(tts_worker())
+            tts_warning_message = "Voice playback is having trouble right now. Text responses are still available."
             try:
-                start_llm = time.perf_counter()
-                final_text = ""
-                retrieved_chunks: list[dict[str, object]] = []
-                memory_summary = ""
-                full_response_parts: list[str] = []
-                tts_buffer = ""
-                speaking_started = False
-                min_sentence_chars = 24
-                max_chunk_chars = 140
-
-                def pop_flushable_chunk(buffer: str) -> tuple[str | None, str]:
-                    if len(buffer) < min_sentence_chars:
-                        return None, buffer
-
-                    boundary = max(buffer.rfind("\n"), buffer.rfind("."), buffer.rfind("!"), buffer.rfind("?"))
-                    if boundary != -1 and boundary + 1 >= min_sentence_chars:
-                        cut = boundary + 1
-                        return buffer[:cut], buffer[cut:]
-
-                    if len(buffer) >= max_chunk_chars:
-                        cut = buffer.rfind(" ", 0, max_chunk_chars)
-                        if cut == -1:
-                            cut = max_chunk_chars
-                        return buffer[:cut], buffer[cut:]
-
-                    return None, buffer
-
-                async for event in self.conversation_session.stream_reply(user_text):
-                    if event.kind == "tool_call":
-                        logger.info("Publishing tool call to frontend tool_name=%s", event.tool_name)
-                        await publish_voice_event(
-                            self.room,
-                            {
-                                "type": "tool_call",
-                                "toolName": event.tool_name,
-                                "arguments": event.tool_arguments or {},
-                                "resultSummary": event.tool_result_summary or "",
-                            },
-                        )
-                        continue
-
-                    if event.kind == "assistant_delta":
-                        logger.info("Assistant delta emitted delta_length=%s", len(event.text))
-                        full_response_parts.append(event.text)
-                        tts_buffer += event.text
-                        await publish_voice_event(
-                            self.room,
-                            {
-                                "type": "assistant_delta",
-                                "delta": event.text,
-                            },
-                        )
-
-                        while True:
-                            chunk, tts_buffer = pop_flushable_chunk(tts_buffer)
-                            if chunk is None:
-                                break
-
-                            to_speak = chunk.strip()
-                            if not to_speak:
-                                continue
-
-                            if not speaking_started:
-                                speaking_started = True
-                                await self.update_assistant_state("speaking")
-                                logger.info(
-                                    "Starting streaming TTS playback tts_provider=%s",
-                                    self.metadata.tts_provider,
-                                )
-
-                            tts_queue.put_nowait(to_speak)
-                        continue
-
-                    if event.kind == "assistant_complete":
-                        final_text = event.text
-                        retrieved_chunks = list(event.retrieved_chunks or [])
-                        memory_summary = str(event.memory_summary or "")
-                        logger.info(
-                            "Assistant complete text_length=%s rag_chunks=%s memory_summary_chars=%s",
-                            len(final_text),
-                            len(retrieved_chunks),
-                            len(memory_summary),
-                        )
-
-                llm_latency_ms = (time.perf_counter() - start_llm) * 1000
-
-                if not final_text:
-                    final_text = "".join(full_response_parts).strip() or "I did not generate a response."
-
-                # Finalize transcript on screen before playback starts
-                await publish_voice_event(
-                    self.room,
-                    {
-                        "type": "assistant_complete",
-                        "text": final_text,
-                        "llm_latency_ms": round(llm_latency_ms),
-                        "retrieved_chunks": retrieved_chunks,
-                        "memory_summary": memory_summary,
-                    },
+                audio = await self.text_to_speech.synthesize(final_text)
+            except Exception:
+                logger.exception(
+                    "TTS synthesis failed provider=%s text_length=%s",
+                    self.metadata.tts_provider,
+                    len(final_text),
                 )
-
-                if not tts_buffer.strip() and not speaking_started:
-                    tts_buffer = final_text
-
-                remainder = tts_buffer.strip()
-                if remainder:
-                    if not speaking_started:
-                        speaking_started = True
-                        await self.update_assistant_state("speaking")
-                        logger.info(
-                            "Starting streaming TTS playback tts_provider=%s",
-                            self.metadata.tts_provider,
-                        )
-                    tts_queue.put_nowait(remainder)
-
-                tts_queue.put_nowait(None)
-                await tts_task
-
-                logger.info("Assistant audio playback finished")
+                await self.publish_assistant_warning(tts_warning_message)
                 await self.update_assistant_state("listening")
+                return
+
+            if not audio.audio:
+                logger.warning(
+                    "TTS returned empty audio provider=%s text_length=%s",
+                    self.metadata.tts_provider,
+                    len(final_text),
+                )
+                await self.publish_assistant_warning(tts_warning_message)
+                await self.update_assistant_state("listening")
+                return
+
+            try:
+                await self.tts_audio_player.play(audio.audio)
+                logger.info("Assistant audio playback finished")
+            except Exception:
+                logger.exception(
+                    "TTS playback failed provider=%s text_length=%s",
+                    self.metadata.tts_provider,
+                    len(final_text),
+                )
+                await self.publish_assistant_warning(tts_warning_message)
             finally:
-                if not tts_task.done():
-                    tts_task.cancel()
-                    with contextlib.suppress(asyncio.CancelledError):
-                        await tts_task
+                await self.update_assistant_state("listening")
 
     async def update_assistant_state(self, state: str) -> None:
         if state == "listening":
